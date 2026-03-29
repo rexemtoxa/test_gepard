@@ -5,6 +5,9 @@
 .gocache-local/
 .cache/**
 
+# protobuf-generated files
+proto/
+
 # sqlc-generated files
 internal/repository/
 postgres-data/
