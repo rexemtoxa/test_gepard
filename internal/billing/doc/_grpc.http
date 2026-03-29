@@ -1,0 +1,50 @@
+# Manual gRPC requests for the local billing server.
+# The server enables reflection, so a local proto import is not required here.
+# Default address is localhost:50051 unless GRPC_PORT was overridden.
+
+### Health check
+GRPC localhost:50051/grpc.health.v1.Health/Check
+
+{
+  "service": "gepard-billing"
+}
+
+### Apply deposit
+GRPC localhost:50051/billing.v1.BillingService/ApplyOperation
+
+{
+  "source": "game",
+  "state": "deposit",
+  "amount": "10.15",
+  "tx_id": "manual-deposit-10"
+}
+
+### Apply same tx_id again to verify duplicate handling
+GRPC localhost:50051/billing.v1.BillingService/ApplyOperation
+
+{
+  "source": "game",
+  "state": "deposit",
+  "amount": "100.15",
+  "tx_id": "manual-deposit-15"
+}
+
+### Withdraw more than the current balance to verify rejection flow
+GRPC localhost:50051/billing.v1.BillingService/ApplyOperation
+
+{
+  "source": "payment",
+  "state": "withdraw",
+  "amount": "99.99",
+  "tx_id": "manual-withdraw-4"
+}
+
+### Invalid request example to verify InvalidArgument mapping
+GRPC localhost:50051/billing.v1.BillingService/ApplyOperation
+
+{
+  "source": "client",
+  "state": "deposit",
+  "amount": "10.15",
+  "tx_id": "manual-invalid-1"
+}
