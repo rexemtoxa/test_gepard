@@ -4,14 +4,9 @@ SELECT pg_advisory_xact_lock(sqlc.arg(lock_group)::integer, sqlc.arg(lock_key)::
 -- name: TryLockCancellationJob :one
 SELECT pg_try_advisory_xact_lock(sqlc.arg(lock_group)::integer, sqlc.arg(lock_key)::integer) AS acquired;
 
--- name: GetOperationRequest :one
+-- name: GetOperationRequestResultStatus :one
 SELECT
-  tx_id,
-  source,
-  state,
-  amount::text AS amount_text,
-  result_status,
-  created_at
+  result_status
 FROM operation_requests
 WHERE tx_id = sqlc.arg(tx_id);
 
@@ -91,23 +86,13 @@ RETURNING
   created_at;
 
 -- name: ListCancelCandidates :many
-WITH applied AS (
-  SELECT
-    le.id,
-    le.signed_amount::text AS signed_amount_text,
-    row_number() OVER (ORDER BY le.id ASC) AS apply_position
-  FROM ledger_entries AS le
-  WHERE le.entry_type = 'apply'
-)
-SELECT
-  applied.id,
-  applied.signed_amount_text,
-  applied.apply_position
-FROM applied
+SELECT le.id, le.signed_amount::text
+FROM ledger_entries AS le
 LEFT JOIN ledger_entries AS canceled
-  ON canceled.reverses_entry_id = applied.id
+  ON canceled.reverses_entry_id = le.id
  AND canceled.entry_type = 'cancel'
-WHERE mod(applied.apply_position, 2::bigint) = 1::bigint
+WHERE le.entry_type = 'apply'
+  AND le.id % 2 = 1
   AND canceled.id IS NULL
-ORDER BY applied.apply_position DESC
+ORDER BY le.id DESC
 LIMIT sqlc.arg(limit_count);

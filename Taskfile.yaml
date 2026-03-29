@@ -4,7 +4,7 @@ version: "3"
 
 vars:
   BUF_VERSION: 1.66.1
-  SQLC_VERSION: 1.26.0
+  SQLC_VERSION: 1.30.0
 
 dotenv: [".env"]
 

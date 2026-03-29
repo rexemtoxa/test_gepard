@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Pbm9tWYPB32TknTjM6JJ6nc3VfyVcWSgGIwYyvAIt7CnezsWlaUkO8e3i70c5dV
+\restrict yQoXSWzjJ55ZpNcS6RhOpRAM4VnW4aN8gndi8184Ah2ezhJdI33es9X0TT37gxT
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 17.9
@@ -144,6 +144,13 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: ledger_entries_apply_odd_latest_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ledger_entries_apply_odd_latest_idx ON public.ledger_entries USING btree (id DESC) INCLUDE (signed_amount) WHERE ((entry_type = 'apply'::text) AND ((id % (2)::bigint) = 1));
+
+
+--
 -- Name: ledger_entries ledger_entries_prev_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -171,5 +178,5 @@ ALTER TABLE ONLY public.ledger_entries
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Pbm9tWYPB32TknTjM6JJ6nc3VfyVcWSgGIwYyvAIt7CnezsWlaUkO8e3i70c5dV
+\unrestrict yQoXSWzjJ55ZpNcS6RhOpRAM4VnW4aN8gndi8184Ah2ezhJdI33es9X0TT37gxT
 
