@@ -1,0 +1,166 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+vars:
+  BUF_VERSION: 1.66.1
+  SQLC_VERSION: 1.26.0
+
+dotenv: [".env"]
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list-all
+
+  install:
+    desc: Verify local prerequisites and bootstrap Go dependencies
+    cmds:
+      - |
+        missing=""
+        for bin in go task dbmate docker; do
+          if ! command -v "$bin" >/dev/null 2>&1; then
+            missing="$missing $bin"
+          fi
+        done
+        if [ -n "$missing" ]; then
+          echo "missing required binaries:$missing"
+          exit 1
+        fi
+      - |
+        actual="$(go version | awk '{print $3}')"
+        if [ "$actual" != "go1.26.1" ]; then
+          echo "expected Go version go1.26.1, got $actual"
+          exit 1
+        fi
+      - env GOCACHE=$(pwd)/.gocache GOMODCACHE=$(pwd)/.gocache-local go mod tidy
+      - |
+        if [ ! -f .env ]; then
+          echo "warning: .env is missing. Copy .env.example to .env before running start or migration tasks."
+        fi
+
+  gen:proto:
+    desc: Generate Go code from protobuf definitions
+    cmds:
+      - docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e XDG_CACHE_HOME=/tmp/.cache -v "$(pwd):/workspace" -w /workspace bufbuild/buf:{{.BUF_VERSION}} generate
+
+  lint:proto:
+    desc: Lint protobuf definitions
+    cmds:
+      - docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e XDG_CACHE_HOME=/tmp/.cache -v "$(pwd):/workspace" -w /workspace bufbuild/buf:{{.BUF_VERSION}} lint
+
+  gen:
+    internal: true
+    cmds:
+      - task: gen:proto
+      - task: gen:sqlc
+
+  run:
+    desc: Start the gRPC server
+    cmds:
+      - task: gen
+      - env GOCACHE=$(pwd)/.gocache GOMODCACHE=$(pwd)/.gocache-local go run ./cmd/server
+
+  db:start:
+    desc: Start local PostgreSQL in Docker
+    cmds:
+      - docker compose up -d postgres
+      - |
+        POSTGRES_DB="${POSTGRES_DB:-gepard_billing}"
+        POSTGRES_USER="${POSTGRES_USER:-postgres}"
+        for attempt in $(seq 1 20); do
+          if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
+            echo "postgres is ready"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "postgres did not become ready in time"
+        exit 1
+
+  db:stop:
+    desc: Stop local PostgreSQL containers
+    cmds:
+      - docker compose down
+
+  db:reset:
+    desc: Recreate local PostgreSQL from scratch and re-apply migrations
+    cmds:
+      - docker compose down -v
+      - task: db:start
+      - task: migrate:up
+
+  db:dump-schema:
+    desc: Refresh db/schema.sql from the local PostgreSQL container
+    cmds:
+      - |
+        POSTGRES_DB="${POSTGRES_DB:-gepard_billing}"
+        POSTGRES_USER="${POSTGRES_USER:-postgres}"
+        docker compose exec -T postgres pg_dump \
+          --schema-only \
+          --no-owner \
+          --no-privileges \
+          -U "$POSTGRES_USER" \
+          "$POSTGRES_DB" > db/schema.sql
+
+  migrate:new:
+    desc: "Create a new dbmate migration (usage: task migrate:new NAME=create_table)"
+    requires:
+      vars: [NAME]
+    cmds:
+      - dbmate --migrations-dir db/migrations --schema-file db/schema.sql new "{{.NAME}}"
+
+  migrate:up:
+    desc: Apply pending migrations and refresh db/schema.sql
+    cmds:
+      - |
+        DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/gepard_billing?sslmode=disable}" \
+        dbmate --migrations-dir db/migrations --schema-file db/schema.sql up
+      - task: db:dump-schema
+
+  migrate:down:
+    desc: Roll back the latest migration and refresh db/schema.sql
+    cmds:
+      - |
+        DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/gepard_billing?sslmode=disable}" \
+        dbmate --migrations-dir db/migrations --schema-file db/schema.sql down
+      - task: db:dump-schema
+
+  migrate:status:
+    desc: Show dbmate migration status
+    cmds:
+      - |
+        DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/gepard_billing?sslmode=disable}" \
+        dbmate --migrations-dir db/migrations --schema-file db/schema.sql status
+
+  gen:sqlc:
+    desc: Generate Go code from sqlc queries
+    cmds:
+      - docker run --rm --user "$(id -u):$(id -g)" -v "$(pwd):/src" -w /src sqlc/sqlc:{{.SQLC_VERSION}} generate
+
+  start:
+    desc: Start infra, apply migrations, and run the bootstrap backend
+    cmds:
+      - task: db:start
+      - task: migrate:up
+      - task: run
+
+  test:
+    desc: Run the Go test suite
+    cmds:
+      - task: gen
+      - env GOCACHE=$(pwd)/.gocache GOMODCACHE=$(pwd)/.gocache-local go test ./...
+
+  verify:
+    desc: Run proto generation, sqlc generation, and tests
+    cmds:
+      - task: lint:proto
+      - task: gen
+      - env GOCACHE=$(pwd)/.gocache GOMODCACHE=$(pwd)/.gocache-local go test ./...
+
+  clean:
+    desc: Stop local infra and remove repo-local caches
+    cmds:
+      - docker compose down -v
+      - rm -rf .gocache .gclcache .gocache-local .cache

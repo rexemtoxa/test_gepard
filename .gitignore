@@ -1,0 +1,10 @@
+.env
+.DS_Store
+.gocache
+.gclcache/
+.gocache-local/
+.cache/**
+
+# sqlc-generated files
+internal/repository/
+postgres-data/
