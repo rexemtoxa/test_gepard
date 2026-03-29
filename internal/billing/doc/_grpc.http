@@ -19,14 +19,14 @@ GRPC localhost:50051/billing.v1.BillingService/ApplyOperation
   "tx_id": "manual-deposit-10"
 }
 
-### Apply same tx_id again to verify duplicate handling
+### Apply the same tx_id again to verify duplicate handling keyed by tx_id
 GRPC localhost:50051/billing.v1.BillingService/ApplyOperation
 
 {
   "source": "game",
   "state": "deposit",
   "amount": "100.15",
-  "tx_id": "manual-deposit-15"
+  "tx_id": "manual-deposit-10"
 }
 
 ### Withdraw more than the current balance to verify rejection flow

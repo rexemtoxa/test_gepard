@@ -17,5 +17,29 @@ services:
       timeout: 5s
       retries: 10
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gepard-billing:local
+    container_name: gepard-billing-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${GRPC_PORT:-50051}:${GRPC_PORT:-50051}"
+    environment:
+      DATABASE_URL: "${APP_DATABASE_URL:-postgres://postgres:postgres@postgres:5432/gepard_billing?sslmode=disable}"
+      GRPC_PORT: "${GRPC_PORT:-50051}"
+      GRPC_UNARY_TIMEOUT: "${GRPC_UNARY_TIMEOUT:-5s}"
+      SERVICE_NAME: "${SERVICE_NAME:-gepard-billing}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CANCEL_ODD_OPS_CRON: "${CANCEL_ODD_OPS_CRON:-@every 1m}"
+      DB_MAX_OPEN_CONNS: "${DB_MAX_OPEN_CONNS:-10}"
+      DB_MAX_IDLE_CONNS: "${DB_MAX_IDLE_CONNS:-10}"
+      DB_CONN_MAX_IDLE_TIME: "${DB_CONN_MAX_IDLE_TIME:-5m}"
+      DB_CONN_MAX_LIFETIME: "${DB_CONN_MAX_LIFETIME:-30m}"
+
 volumes:
   postgres-data:

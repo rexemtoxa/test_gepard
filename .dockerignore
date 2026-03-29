@@ -1,0 +1,21 @@
+.git
+.gitignore
+.env
+.DS_Store
+.go-version
+.gocache
+.gocache-local
+.gclcache
+.cache
+postgres-data
+
+**/*_test.go
+README.md
+Taskfile.yaml
+db/schema.sql
+docker-compose.yml
+internal/billing/doc
+
+# Regenerated inside Docker build stages.
+proto/**/*.pb.go
+internal/repository

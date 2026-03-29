@@ -61,7 +61,7 @@ func (s *Service) CancelLatestOddOperations(ctx context.Context, limit int32) (i
 
 	canceledCount := 0
 	for _, candidate := range candidates {
-		signedAmount, err := ParseMoney(candidate.SignedAmountText)
+		signedAmount, err := ParseMoney(candidate.LeSignedAmount)
 		if err != nil {
 			return 0, err
 		}
