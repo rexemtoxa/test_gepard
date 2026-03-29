@@ -5,6 +5,7 @@ version: "3"
 vars:
   BUF_VERSION: 1.66.1
   SQLC_VERSION: 1.30.0
+  GOLANGCI_LINT_VERSION: v2.11.3
 
 dotenv: [".env"]
 
@@ -45,6 +46,12 @@ tasks:
     cmds:
       - docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e XDG_CACHE_HOME=/tmp/.cache -v "$(pwd):/workspace" -w /workspace bufbuild/buf:{{.BUF_VERSION}} generate
 
+  lint:
+    desc: Run backend lint checks
+    cmds:
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+      - PATH="$(go env GOPATH)/bin:$PATH" golangci-lint run -v --config .golangci.yml
+      - task: lint:proto
   lint:proto:
     desc: Lint protobuf definitions
     cmds:

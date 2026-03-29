@@ -1,0 +1,158 @@
+version: "2"
+run:
+  concurrency: 3
+  tests: false
+linters:
+  default: standard
+  enable:
+    - arangolint
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - copyloopvar
+    - decorder
+    - dogsled
+    - dupword
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - exhaustive
+    - exptostd
+    - fatcontext
+    - ginkgolinter
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - godoclint
+    - godot
+    - godox
+    - goheader
+    - gochecknoglobals
+    - gosec
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosmopolitan
+    - govet
+    - grouper
+    - intrange
+    - inamedparam
+    - ineffassign
+    - iface
+    - ireturn
+    - iotamixing
+    - loggercheck
+    - maintidx
+    - makezero
+    - mirror
+    - misspell
+    - mnd
+    - modernize
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nlreturn
+    - noctx
+    - noinlineerr
+    - nonamedreturns
+    - nolintlint
+    - nosprintfhostport
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - predeclared
+    - promlinter
+    - protogetter
+    - reassign
+    - recvcheck
+    - revive
+    - sloglint
+    - spancheck
+    - sqlclosecheck
+    - tagalign
+    - testableexamples
+    - testpackage
+    - testifylint
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - unqueryvet
+    - unused
+    - usestdlibvars
+    - usetesting
+    - varnamelen
+    - wastedassign
+    - whitespace
+    - wsl_v5
+    - zerologlint
+    - lll
+    - tagliatelle
+    - wrapcheck
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: encoding/json
+              desc: Use github.com/goccy/go-json instead
+    exhaustive:
+      default-signifies-exhaustive: true
+    gosec:
+      excludes:
+        - G114
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+    tagliatelle:
+      case:
+        rules:
+          avro: snake
+          bson: camel
+          json: snake
+          mapstructure: kebab
+          xml: camel
+          yaml: camel
+        use-field-name: true
+    varnamelen:
+      ignore-names:
+        - ctx
+        - r
+        - w
+        - t
+        - tb
+        - tx
+        - db
+        - ip
+        - id
+        - ok
+        - ch
+        - wg
+        - mu
+        - fl
+        - i
+        - j
+        - k
+  exclusions:
+    generated: strict
+    warn-unused: true
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - misspell
+        text: Transitionable
+      - path: (.+)/client.go
+        text: (\d+)-(\d+) lines are duplicate of `(.+)/bind-gen.go:(\d+)-(\d+)
+    paths:
+      - frontend/node_modules
+      - third_party$
+      - builtin$
+      - examples$

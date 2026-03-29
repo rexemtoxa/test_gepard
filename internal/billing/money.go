@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"fmt"
+	"errors"
 	"regexp"
 	"strings"
 
@@ -19,24 +19,27 @@ func ParsePositiveMoney(input string) (Money, error) {
 	if err != nil {
 		return Money{}, err
 	}
+
 	if !value.IsPositive() {
-		return Money{}, fmt.Errorf("amount must be greater than zero")
+		return Money{}, errors.New("amount must be greater than zero")
 	}
+
 	return value, nil
 }
 
 func ParseMoney(input string) (Money, error) {
 	value := strings.TrimSpace(input)
 	if value == "" {
-		return Money{}, fmt.Errorf("amount is required")
+		return Money{}, errors.New("amount is required")
 	}
+
 	if strings.HasPrefix(value, "+") || strings.ContainsAny(value, "eE") || !plainDecimalPattern.MatchString(value) {
-		return Money{}, fmt.Errorf("amount must be a decimal string")
+		return Money{}, errors.New("amount must be a decimal string")
 	}
 
 	parsed, err := decimal.NewFromString(value)
 	if err != nil {
-		return Money{}, fmt.Errorf("amount must be a decimal string")
+		return Money{}, errors.New("amount must be a decimal string")
 	}
 
 	return Money{value: parsed}, nil

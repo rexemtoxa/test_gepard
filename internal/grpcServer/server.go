@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -22,7 +23,12 @@ type Server struct {
 	serviceName  string
 }
 
-func NewServer(serviceName string, unaryTimeout time.Duration, logger *log.Logger, registerFns ...func(*grpc.Server)) *Server {
+func NewServer(
+	serviceName string,
+	unaryTimeout time.Duration,
+	logger *log.Logger,
+	registerFns ...func(*grpc.Server),
+) *Server {
 	if logger == nil {
 		logger = log.Default()
 	}
@@ -41,9 +47,11 @@ func NewServer(serviceName string, unaryTimeout time.Duration, logger *log.Logge
 	runtimeServer.SetServingStatus(healthpb.HealthCheckResponse_NOT_SERVING)
 
 	healthpb.RegisterHealthServer(server, healthServer)
+
 	for _, registerFn := range registerFns {
 		registerFn(server)
 	}
+
 	reflection.Register(server)
 
 	return runtimeServer
@@ -90,7 +98,12 @@ func shouldSkipUnaryInterceptors(fullMethod string) bool {
 }
 
 func (s *Server) Serve(listener net.Listener) error {
-	return s.grpcServer.Serve(listener)
+	err := s.grpcServer.Serve(listener)
+	if err != nil {
+		return fmt.Errorf("serve gRPC server: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Server) GracefulStop() {
@@ -103,6 +116,7 @@ func (s *Server) Stop() {
 
 func (s *Server) SetServingStatus(status healthpb.HealthCheckResponse_ServingStatus) {
 	s.healthServer.SetServingStatus("", status)
+
 	if s.serviceName != "" {
 		s.healthServer.SetServingStatus(s.serviceName, status)
 	}

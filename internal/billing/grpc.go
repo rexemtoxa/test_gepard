@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	billingv1 "github.com/rexemtoxa/gepard_billing/proto/billing/v1"
 	"google.golang.org/grpc/codes"
@@ -24,10 +25,13 @@ func NewGRPCServer(applier operationApplier) *GRPCServer {
 	return &GRPCServer{applier: applier}
 }
 
-func (s *GRPCServer) ApplyOperation(ctx context.Context, request *billingv1.ApplyOperationRequest) (*billingv1.ApplyOperationResponse, error) {
+func (s *GRPCServer) ApplyOperation(
+	ctx context.Context,
+	request *billingv1.ApplyOperationRequest,
+) (*billingv1.ApplyOperationResponse, error) {
 	command, err := ValidateApplyCommand(request.GetSource(), request.GetState(), request.GetAmount(), request.GetTxId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, grpcStatusError(codes.InvalidArgument, err.Error())
 	}
 
 	result, err := s.applier.ApplyOperation(ctx, command)
@@ -44,12 +48,16 @@ func (s *GRPCServer) ApplyOperation(ctx context.Context, request *billingv1.Appl
 func mapServiceError(err error) error {
 	switch {
 	case errors.Is(err, context.Canceled):
-		return status.Error(codes.Canceled, context.Canceled.Error())
+		return grpcStatusError(codes.Canceled, context.Canceled.Error())
 	case errors.Is(err, context.DeadlineExceeded):
-		return status.Error(codes.DeadlineExceeded, context.DeadlineExceeded.Error())
+		return grpcStatusError(codes.DeadlineExceeded, context.DeadlineExceeded.Error())
 	case errors.Is(err, sql.ErrConnDone):
-		return status.Error(codes.Unavailable, "database unavailable")
+		return grpcStatusError(codes.Unavailable, "database unavailable")
 	default:
-		return status.Error(codes.Internal, "internal server error")
+		return grpcStatusError(codes.Internal, "internal server error")
 	}
+}
+
+func grpcStatusError(code codes.Code, message string) error {
+	return fmt.Errorf("%w", status.Error(code, message))
 }

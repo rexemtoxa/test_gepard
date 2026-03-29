@@ -24,13 +24,15 @@ type ApplyResult struct {
 
 func ValidateApplyCommand(source, state, amount, txID string) (ApplyCommand, error) {
 	if txID == "" {
-		return ApplyCommand{}, fmt.Errorf("tx_id is required")
+		return ApplyCommand{}, errors.New("tx_id is required")
 	}
+
 	if source != sourceGame && source != sourcePayment && source != sourceService {
-		return ApplyCommand{}, fmt.Errorf("source must be one of game, payment, service")
+		return ApplyCommand{}, errors.New("source must be one of game, payment, service")
 	}
+
 	if state != stateDeposit && state != stateWithdraw {
-		return ApplyCommand{}, fmt.Errorf("state must be one of deposit, withdraw")
+		return ApplyCommand{}, errors.New("state must be one of deposit, withdraw")
 	}
 
 	parsedAmount, err := ParsePositiveMoney(amount)
@@ -49,39 +51,44 @@ func ValidateApplyCommand(source, state, amount, txID string) (ApplyCommand, err
 func (s *Service) ApplyOperation(ctx context.Context, command ApplyCommand) (ApplyResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return ApplyResult{}, err
+		return ApplyResult{}, fmt.Errorf("begin apply operation transaction: %w", err)
 	}
 
 	queries := s.queries.WithTx(tx)
 	committed := false
+
 	defer func() {
 		if !committed {
 			_ = tx.Rollback()
 		}
 	}()
 
-	if err := queries.LockBalanceMutations(ctx, repository.LockBalanceMutationsParams{
+	err = queries.LockBalanceMutations(ctx, repository.LockBalanceMutationsParams{
 		LockGroup: lockGroupBalance,
 		LockKey:   lockKeyBalance,
-	}); err != nil {
-		return ApplyResult{}, err
+	})
+	if err != nil {
+		return ApplyResult{}, fmt.Errorf("lock balance mutations: %w", err)
 	}
 
 	existingStatus, err := queries.GetOperationRequestResultStatus(ctx, command.TxID)
 	switch {
 	case err == nil:
-		if err := tx.Commit(); err != nil {
-			return ApplyResult{}, err
+		err = tx.Commit()
+		if err != nil {
+			return ApplyResult{}, fmt.Errorf("commit duplicate apply operation: %w", err)
 		}
+
 		committed = true
+
 		return applyResultFromValues(command.TxID, existingStatus, true), nil
 	case !errors.Is(err, sql.ErrNoRows):
-		return ApplyResult{}, err
+		return ApplyResult{}, fmt.Errorf("get existing operation request status: %w", err)
 	}
 
 	head, err := queries.GetLedgerHead(ctx)
 	if err != nil {
-		return ApplyResult{}, err
+		return ApplyResult{}, fmt.Errorf("get ledger head: %w", err)
 	}
 
 	currentBalance, err := ParseMoney(head.BalanceAfterText)
@@ -89,8 +96,9 @@ func (s *Service) ApplyOperation(ctx context.Context, command ApplyCommand) (App
 		return ApplyResult{}, err
 	}
 
-	newBalance := currentBalance
 	dbStatus := dbResultStatusApplied
+
+	var newBalance Money
 	if command.State == stateDeposit {
 		newBalance = currentBalance.Add(command.Amount)
 	} else {
@@ -109,37 +117,42 @@ func (s *Service) ApplyOperation(ctx context.Context, command ApplyCommand) (App
 		ResultStatus: dbStatus,
 	})
 	if err != nil {
-		return ApplyResult{}, err
+		return ApplyResult{}, fmt.Errorf("insert operation request: %w", err)
 	}
 
 	if dbStatus == dbResultStatusApplied {
 		prevEntryID := nullableInt64(head.ID)
 		signedAmount := command.Amount
+
 		if command.State == stateWithdraw {
 			signedAmount = signedAmount.Neg()
 		}
 
-		_, err := queries.InsertApplyLedgerEntry(ctx, repository.InsertApplyLedgerEntryParams{
+		_, err = queries.InsertApplyLedgerEntry(ctx, repository.InsertApplyLedgerEntryParams{
 			RequestTxID:  sql.NullString{String: command.TxID, Valid: true},
 			SignedAmount: signedAmount.String(),
 			PrevEntryID:  prevEntryID,
 			BalanceAfter: newBalance.String(),
 		})
 		if err != nil {
-			return ApplyResult{}, err
+			return ApplyResult{}, fmt.Errorf("insert apply ledger entry: %w", err)
 		}
 
-		if err := tx.Commit(); err != nil {
-			return ApplyResult{}, err
+		err = tx.Commit()
+		if err != nil {
+			return ApplyResult{}, fmt.Errorf("commit applied operation: %w", err)
 		}
+
 		committed = true
 
 		return applyResultFromValues(insertedRequest.TxID, insertedRequest.ResultStatus, false), nil
 	}
 
-	if err := tx.Commit(); err != nil {
-		return ApplyResult{}, err
+	err = tx.Commit()
+	if err != nil {
+		return ApplyResult{}, fmt.Errorf("commit rejected operation: %w", err)
 	}
+
 	committed = true
 
 	return applyResultFromValues(insertedRequest.TxID, insertedRequest.ResultStatus, false), nil

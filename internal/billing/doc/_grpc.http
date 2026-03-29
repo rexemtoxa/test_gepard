@@ -26,7 +26,7 @@ GRPC localhost:50051/billing.v1.BillingService/ApplyOperation
   "source": "game",
   "state": "deposit",
   "amount": "100.15",
-  "tx_id": "manual-deposit-10"
+  "tx_id": "manual-deposit-114"
 }
 
 ### Withdraw more than the current balance to verify rejection flow

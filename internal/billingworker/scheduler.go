@@ -24,9 +24,11 @@ type Scheduler struct {
 
 func NewScheduler(spec string, canceler oddOperationCanceler) (*Scheduler, error) {
 	scheduler := cron.New()
-	if _, err := scheduler.AddFunc(spec, func() {
+
+	_, err := scheduler.AddFunc(spec, func() {
 		runCancelLatestOddOperations(canceler, cancelLatestOddOperationsTimeout, cancelLatestOddOperationsLimit)
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("schedule cancellation worker: %w", err)
 	}
 
@@ -49,8 +51,10 @@ func runCancelLatestOddOperations(canceler oddOperationCanceler, timeout time.Du
 	canceledCount, err := canceler.CancelLatestOddOperations(ctx, limit)
 	if err != nil {
 		log.Printf("cancel latest odd operations: %v", err)
+
 		return
 	}
+
 	if canceledCount > 0 {
 		log.Printf("canceled %d odd operations", canceledCount)
 	}

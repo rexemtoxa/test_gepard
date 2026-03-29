@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict yQoXSWzjJ55ZpNcS6RhOpRAM4VnW4aN8gndi8184Ah2ezhJdI33es9X0TT37gxT
+\restrict lmOM4njEk0QW4NM54zciqORez56JvImdfgLGkB0sY2xqJysCFikGOKSrvvCNql6
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 17.9
@@ -178,5 +178,5 @@ ALTER TABLE ONLY public.ledger_entries
 -- PostgreSQL database dump complete
 --
 
-\unrestrict yQoXSWzjJ55ZpNcS6RhOpRAM4VnW4aN8gndi8184Ah2ezhJdI33es9X0TT37gxT
+\unrestrict lmOM4njEk0QW4NM54zciqORez56JvImdfgLGkB0sY2xqJysCFikGOKSrvvCNql6
 
