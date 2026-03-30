@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package billing.v1;
+
+option go_package = "github.com/rexemtoxa/gepard_billing/proto/billing/v1;billingv1";
+
+service BillingService {
+  rpc ApplyOperation(ApplyOperationRequest) returns (ApplyOperationResponse);
+}
+
+message ApplyOperationRequest {
+  string source = 1;
+  string state = 2;
+  string amount = 3;
+  string tx_id = 4;
+}
+
+message ApplyOperationResponse {
+  string result_status = 1;
+  bool duplicate = 2;
+}
