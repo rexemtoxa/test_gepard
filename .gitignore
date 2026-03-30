@@ -6,7 +6,7 @@
 .cache/**
 
 # protobuf-generated files
-proto/
+proto/**/*.go
 
 # sqlc-generated files
 internal/repository/
